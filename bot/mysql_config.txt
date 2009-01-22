@@ -1,0 +1,5 @@
+server: mysql.lassam.net
+port: 3306
+database: pierc
+user: pierc
+password: thedayofthetriffids
