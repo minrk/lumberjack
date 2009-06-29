@@ -1,4 +1,4 @@
 server: irc.freenode.net
 port: 6667
-channel: #autoboose_test
-nick: skittlebit
+channel: #sfucsss
+nick: AutoBoose
