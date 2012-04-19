@@ -12,7 +12,6 @@ import datetime
 
 #mine
 import LumberJack_Database
-import config
 
 
 # Configuration
@@ -150,15 +149,14 @@ class Logger(irclib.SimpleIRCClient):
 				self.on_ping(connection, event)
 				return
 
-def main():
-	mysql_settings = config.config("mysql_config.txt")
-	irc_settings = config.config("irc_config.txt")
+def main(settings):
+	mysql_settings = settings['mysql']
 	
 	c = Logger(
-				irc_settings["server"], 
-				int(irc_settings["port"]), 
-				irc_settings["channel"], 
-				irc_settings["nick"],
+				settings["server"],
+				int(settings["port"]),
+				settings["channel"],
+				settings["nick"],
 				mysql_settings["server"],
 				int(mysql_settings["port"]),
 				mysql_settings["database"],
@@ -167,11 +165,13 @@ def main():
 	c.start()
 	
 if __name__ == "__main__":
-	irc_settings = config.config("irc_config.txt")
-	reconnect_interval = irc_settings["reconnect"]
+	with open('lumberjack_config.json') as f:
+		settings = json.load(f)
+
+	reconnect_interval = settings["reconnect"]
 	while True:
 		try:
-			main()
+			main(settings)
 		except irclib.ServerNotConnectedError:
 			print "Server Not Connected! Let's try again!"             
         	time.sleep(float(reconnect_interval))

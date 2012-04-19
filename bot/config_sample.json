@@ -1,0 +1,14 @@
+{
+  "server": "irc.freenode.net", 
+  "nick": "lumberjack", 
+  "reconnect": 300, 
+  "mysql": {
+    "database": "lumberjack", 
+    "password": "lumberjack_password", 
+    "port": 3306, 
+    "server": "mysql.sample.net", 
+    "user": "lumberjack_user"
+  }, 
+  "port": 6667, 
+  "channel": "#logbot_test"
+}
