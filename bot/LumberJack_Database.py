@@ -1,67 +1,55 @@
-import MySQLdb
-import config
+import json
+import sqlite3
 import datetime
 
-class LumberJack_Database:
+class LumberJackDatabase:
     
-    def __init__(self, server, port, database, user, password):
-        self.conn = MySQLdb.connect ( host = server,
-                        port = port, 
-                        user = user,
-                        passwd = password,
-                        db = database )
+    def __init__(self, database):
+        self.conn = sqlite3.connect (database)
         self.cursor = self.conn.cursor()
-            
+        self.create_table()
 
     def __del__(self):
         try:
             self.conn.close()
-        except: 
-            return        
+        except:
+            pass
 
     def create_table(self):
         self.cursor.execute(
         """
-            CREATE TABLE IF NOT EXISTS main
+            CREATE TABLE IF NOT EXISTS lumberjack
             (
-                id      INT(12) NOT NULL AUTO_INCREMENT PRIMARY KEY,
-                channel VARCHAR(16),
-                name    VARCHAR(16),
-                time    DATETIME,
-                message TEXT,
-                type    VARCHAR(10),
-                hidden  CHAR(1)
-            ) engine = InnoDB;
+                id integer primary key autoincrement,
+                channel text,
+                name    text,
+                time    datetime,
+                message text,
+                type    text,
+                hidden  text
+            )
             
             """)
+        self.commit()
 
     def insert_line(self, channel, name, time, message, msgtype, hidden = "F"):
 
         """
         Sample line: "sfucsss, danly, 12:33-09/11/2009, I love hats, normal, 0"
         """
-        query =    "INSERT INTO main (channel, name, time, message, type, hidden) VALUES" + \
-        "(\""+self.conn.escape_string(channel)+ "\"," + \
-        "\""+self.conn.escape_string(name)+"\"," + \
-        "\""+time+"\"," + \
-        "\""+self.conn.escape_string(message)+"\"," + \
-        "\""+self.conn.escape_string(msgtype)+"\"," + \
-        "\""+self.conn.escape_string(hidden)+"\")"
+        
+        args = (channel, name, time, message, msgtype, hidden)
+        
+        query = "INSERT INTO lumberjack (channel, name, time, message, type, hidden) VALUES" + \
+        ' ?'*len(args)
 
-        self.cursor.execute(query)
+        self.cursor.execute(query, args)
         
     def commit(self):
         self.conn.commit()
 
-if __name__ == "__main__":
-    mysql_config = config.config("mysql_config.txt")
-    db = LumberJack_Database( mysql_config["server"],
-                        int(mysql_config["port"]),
-                        mysql_config["database"], 
-                        mysql_config["user"],
-                        mysql_config["password"])
-    db.create_table()
-        
-        
-        
-    
+
+if __name__ == '__main__':
+    with open('lumberjack_config.json') as f:
+        settings = json.load(f)
+    db = LumberJackDatabase(settings['db'])

@@ -1,25 +1,25 @@
 #! /usr/bin/env python
 #
-
-#libs
-from ircbot import SingleServerIRCBot
-from irclib import nm_to_n, nm_to_h, irc_lower, ip_numstr_to_quad, ip_quad_to_numstr
-import irclib
+import logging
+import json
 import sys
 import re
 import time
 import datetime
 
-#mine
-import LumberJack_Database
+#libs
+from ircbot import SingleServerIRCBot
+from irclib import nm_to_n, nm_to_h, irc_lower, ip_numstr_to_quad, ip_quad_to_numstr
+import irclib
 
+#mine
+from LumberJack_Database import LumberJackDatabase
 
 # Configuration
 
 class Logger(irclib.SimpleIRCClient):
     
-    def __init__(self, server, port, channel, nick, 
-                mysql_server, mysql_port, mysql_database, mysql_user, mysql_password):
+    def __init__(self, server, port, channel, nick, db):
 
     
         irclib.SimpleIRCClient.__init__(self)
@@ -31,12 +31,8 @@ class Logger(irclib.SimpleIRCClient):
         self.channel = channel
         self.nick = nick
         
-        #MySQL details
-        self.mysql_server = mysql_server
-        self.mysql_port = mysql_port
-        self.mysql_database = mysql_database
-        self.mysql_user = mysql_user
-        self.mysql_password = mysql_password
+        #DB details
+        self.db = db
         
         #Regexes
         self.nick_reg = re.compile("^" + nick + "[:,](?iu)")
@@ -108,13 +104,10 @@ class Logger(irclib.SimpleIRCClient):
         raise irclib.ServerNotConnectedError
 
     def on_ping(self, connection, event):
+        
         self.last_ping = 0
         try:
-            db = LumberJack_Database.LumberJack_Database( self.mysql_server,
-                                                             self.mysql_port,
-                                                             self.mysql_database, 
-                                                                self.mysql_user,
-                                                            self.mysql_password)
+            db = LumberJackDatabase( self.db )
             for message in self.message_cache:
                 db.insert_line(message["channel"], message["name"], message["time"], message["message"], message["type"] )
             
@@ -127,8 +120,7 @@ class Logger(irclib.SimpleIRCClient):
             self.message_cache = []    
                 
         except Exception, e:
-            print "Database Commit Failed! Let's wait a bit!" 
-            print e
+            
             if self.disconnect_countdown <= 0:
                 sys.exit( 0 )
             connection.privmsg(self.channel, "Database connection lost! " + str(self.disconnect_countdown) + " retries until I give up entirely!" )
@@ -150,18 +142,13 @@ class Logger(irclib.SimpleIRCClient):
                 return
 
 def main(settings):
-    mysql_settings = settings['mysql']
-    
     c = Logger(
                 settings["server"],
-                int(settings["port"]),
+                settings["port"],
                 settings["channel"],
                 settings["nick"],
-                mysql_settings["server"],
-                int(mysql_settings["port"]),
-                mysql_settings["database"],
-                mysql_settings["user"],
-                mysql_settings["password"] ) 
+                settings['db'],
+    ) 
     c.start()
     
 if __name__ == "__main__":
