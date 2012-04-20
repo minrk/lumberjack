@@ -97,7 +97,7 @@ function home()
 	$("#searchoptions").hide();	
 	// Ajax call to populate table
 	loading()
-	$.getJSON("json.php",
+	$.getJSON("json",
         function(data){
         	first_id = data[0].id;
         	$(data).each( function(i, item) { 	
@@ -116,7 +116,7 @@ function refresh()
 {
 	if( !refresh_on ) { return; }
 	loading();
-	$.getJSON("json.php", { 'type':'update', 'id': last_id },
+	$.getJSON("json", { 'type':'update', 'id': last_id },
         function(data){
         	$(data).each( function(i, item) { 
         										try
@@ -150,7 +150,7 @@ function search_for( searchvalue )
 	loading();
 	
 	// Ajax call to get search results
-	$.getJSON("json.php", {'search':searchvalue}, 
+	$.getJSON("json", {'search':searchvalue}, 
         function(data){
 		if( data.length < 50 ) { $("#searchoptions").hide(); }	
         	$(data).each( function(i, item) { try
@@ -190,7 +190,7 @@ function context(id)
 	loading();
 	
 	// Ajax call to get 'context' (find the comment at id 'id' and 'n' spaces around it). 
-	$.getJSON("json.php", {'type':'context', 'id':id },
+	$.getJSON("json", {'type':'context', 'id':id },
         function(data){
         	first_id = data[0].id;
         	$(data).each( function(i, item) { 	
@@ -215,7 +215,7 @@ function load_more_search_results()
 
 	// Ajax call
 	loading();
-	$.getJSON("json.php", {'type':'search', 'n':50, 'offset':current_offset, 'search':most_recent_search },
+	$.getJSON("json", {'type':'search', 'n':50, 'offset':current_offset, 'search':most_recent_search },
 	function(data){ 
         	$("<tr class='pagebreak'><td></td> <td>------------------------------</td> <td></td></tr>").prependTo("#irc");
 		var id = 0;
@@ -237,7 +237,7 @@ function page_up()
 {	
 	// Ajax call to populate table
 	loading();
-	$.getJSON("json.php", {'type':'context', 'id':first_id, 'n':20, 'context':'before' },
+	$.getJSON("json", {'type':'context', 'id':first_id, 'n':20, 'context':'before' },
         function(data){
         	$("<tr class='pagebreak'><td></td> <td>------------------------------</td> <td></td></tr>").prependTo("#irc");
         	$(data).each( function(i, item) { 	
@@ -255,7 +255,7 @@ function page_down()
 {	
 	loading();
 	
-	$.getJSON("json.php", {'type':'context', 'id':last_id, 'n':20, 'context':'after' },
+	$.getJSON("json", {'type':'context', 'id':last_id, 'n':20, 'context':'after' },
         function(data){
         	$("<tr class='pagebreak'><td></td> <td>------------------------------</td> <td></td></tr>").appendTo("#irc");
         	$(data).each( function(i, item) { 	
@@ -294,7 +294,7 @@ function tag( tagname )
 	$('#irc').removeClass("searchresult");
 	
 	loading();	
-	$.getJSON("json.php", {'type':'tag', 'tag':tagname, 'n':15 },
+	$.getJSON("json", {'type':'tag', 'tag':tagname, 'n':15 },
         function(data){
         	$(data).each( function(i, item) { 	
         										$(irc_render(item)).appendTo("#irc");

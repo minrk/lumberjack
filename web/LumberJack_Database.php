@@ -5,18 +5,16 @@ class db_class
 {
 	protected $_conn;
 	
-	public function __construct( $server, $port, $database, $user, $password, $timezone)
+	public function __construct( $database, $timezone)
 	{
-		if ($port) { $port = ":".$port; }
-		$this->_conn = mysql_connect( $server.$port, $user, $password );
-		if (!$this->_conn){ die ("Could not connect: " + mysql_error() ); }
-		mysql_select_db( $database, $this->_conn );
+		$this->_conn = sqlite_open( $database );
+		if (!$this->_conn){ die ("Could not connect: " + sqlite_error_string() ); }
 		$this->timezone = $timezone;
 	}
 	
 	public function __destruct( )
 	{
-		mysql_close( $this->_conn );	
+		sqlite_close( $this->_conn );	
 	}
 	
 }
