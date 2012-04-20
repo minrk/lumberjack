@@ -46,6 +46,12 @@ class LumberJackDatabase:
     
     def commit(self):
         self.conn.commit()
+    
+    def get_last_n_lines(self, channel, n=100):
+        query = "SELECT * FROM lumberjack WHERE channel = ? ORDER BY time DESC, id DESC LIMIT ?"
+        result = self.cursor.execute(query, (channel, n))
+        return list(result)
+        
 
 
 if __name__ == '__main__':

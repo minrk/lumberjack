@@ -90,7 +90,7 @@ class Logger(irclib.SimpleIRCClient):
                 text = ""
         
             # Prepare a message for the buffer
-            message_dict = {"channel":self.channel.strip("#"),
+            message_dict = {"channel": self.channel,
                             "name": source,
                             "message": text,
                             "type": e.eventtype(),
