@@ -72,14 +72,9 @@ class Logger(irclib.SimpleIRCClient):
 
 
     def _dispatcher(self, c, e):
-    # This determines how a new event is handled. 
-        if(e.eventtype() == "topic" or 
-           e.eventtype() == "part" or
-           e.eventtype() == "join" or
-           e.eventtype() == "action" or
-           e.eventtype() == "quit" or
-           e.eventtype() == "nick" or
-           e.eventtype() == "pubmsg"):
+        """dispatch events"""
+        etype = e.eventtype()
+        if etype in ('topic', 'part', 'join', 'action', 'quit', 'nick', 'pubmsg':
             try: 
                 source = e.source().split("!")[0]
             except IndexError:
@@ -96,13 +91,13 @@ class Logger(irclib.SimpleIRCClient):
                             "type": e.eventtype(),
                             "time": str(datetime.datetime.utcnow()) } 
                             
-            if e.eventtype() == "nick":
+            if etype == "nick":
                 message_dict["message"] = e.target()
             
             # Most of the events are pushed to the buffer. 
             self.message_cache.append( message_dict )
         
-        m = "on_" + e.eventtype()    
+        m = "on_" + etype
         if hasattr(self, m):
             getattr(self, m)(c, e)
 
