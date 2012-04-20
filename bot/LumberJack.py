@@ -8,7 +8,6 @@ import time
 import datetime
 
 from tornado import ioloop
-from tornado.iostream import IOStream
 
 #libs
 from ircbot import SingleServerIRCBot
@@ -38,7 +37,8 @@ class Logger(irclib.SimpleIRCClient):
         self.nick = nick
         
         #DB details
-        self.db = db
+        self.db = LumberJackDatabase( db )
+
         
         #Regexes
         self.nick_reg = re.compile("^" + nick + "[:,](?iu)")
@@ -74,7 +74,7 @@ class Logger(irclib.SimpleIRCClient):
     def _dispatcher(self, c, e):
         """dispatch events"""
         etype = e.eventtype()
-        if etype in ('topic', 'part', 'join', 'action', 'quit', 'nick', 'pubmsg':
+        if etype in ('topic', 'part', 'join', 'action', 'quit', 'nick', 'pubmsg'):
             try: 
                 source = e.source().split("!")[0]
             except IndexError:
@@ -89,7 +89,7 @@ class Logger(irclib.SimpleIRCClient):
                             "name": source,
                             "message": text,
                             "type": e.eventtype(),
-                            "time": str(datetime.datetime.utcnow()) } 
+                            "time": datetime.datetime.utcnow() } 
                             
             if etype == "nick":
                 message_dict["message"] = e.target()
@@ -129,21 +129,18 @@ class Logger(irclib.SimpleIRCClient):
             logging.info("saving %i messages" % len(self.message_cache))
         
         try:
-            db = LumberJackDatabase( self.db )
-            logging.info("saving %i messages" % len(self.message_cache))
             for message in self.message_cache:
-                db.insert_line(message["channel"], message["name"], message["time"], message["message"], message["type"] )
+                self.db.insert_line(message["channel"], message["name"], message["time"], message["message"], message["type"] )
             
-            db.commit()
+            self.db.commit()
             if self.disconnect_countdown < 5:
                 self.disconnect_countdown = self.disconnect_countdown + 1
             
-            del db
             # clear the cache
             self.message_cache = []
                 
         except Exception:
-            logging.error("Couldn't connect to db: %s", self.db, exc_info=True)
+            logging.error("Couldn't commit to db: %s", self.db.fname, exc_info=True)
             if self.disconnect_countdown <= 0:
                 self.loop.stop()
             # connection.privmsg(self.channel, "Database connection lost! " + str(self.disconnect_countdown) + " retries until I give up entirely!" )

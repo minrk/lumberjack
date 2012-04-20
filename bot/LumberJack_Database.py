@@ -5,6 +5,7 @@ import datetime
 class LumberJackDatabase:
     
     def __init__(self, database):
+        self.fname = database
         self.conn = sqlite3.connect (database)
         self.cursor = self.conn.cursor()
         self.create_table()
