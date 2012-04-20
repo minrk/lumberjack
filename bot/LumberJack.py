@@ -7,6 +7,9 @@ import re
 import time
 import datetime
 
+from tornado import ioloop
+from tornado.iostream import IOStream
+
 #libs
 from ircbot import SingleServerIRCBot
 from irclib import nm_to_n, nm_to_h, irc_lower, ip_numstr_to_quad, ip_quad_to_numstr
@@ -19,10 +22,13 @@ from LumberJack_Database import LumberJackDatabase
 
 class Logger(irclib.SimpleIRCClient):
     
-    def __init__(self, server, port, channel, nick, db):
-
-    
+    def __init__(self, server, port, channel, nick, db, loop=None):
         irclib.SimpleIRCClient.__init__(self)
+        
+        # tornado ioloop
+        if loop is None:
+            loop = ioloop.IOLoop.instance()
+        self.loop = loop
         
         #IRC details
         self.server = server
@@ -47,6 +53,15 @@ class Logger(irclib.SimpleIRCClient):
         self.ircobj.delayed_commands.append( (time.time()+5, self._no_ping, [] ) )
      
         self.connect(self.server, self.port, self.nick)
+    
+    def connect(self, *args, **kwargs):
+        logging.debug("IRC:connecting...")
+        irclib.SimpleIRCClient.connect(self, *args, **kwargs)
+        self.loop.add_handler(self.connection.socket.fileno(), self._handle_message, self.loop.READ)
+    
+    def _handle_message(self, fd, events):
+        logging.debug("dispatching message")
+        self.connection.process_data()
     
     def _no_ping(self):
         if self.last_ping >= 1200:
@@ -92,22 +107,35 @@ class Logger(irclib.SimpleIRCClient):
             getattr(self, m)(c, e)
 
     def on_nicknameinuse(self, c, e):
+        logging.error("nick in use")
+        
         c.nick(c.get_nickname() + "_")
 
     def on_welcome(self, connection, event):
+        logging.info("welcome")
         if irclib.is_channel(self.target):
             connection.join(self.target)
 
     def on_disconnect(self, connection, event):
+        logging.info("disconnect")
         self.on_ping(connection, event)
         connection.disconnect()
         raise irclib.ServerNotConnectedError
 
     def on_ping(self, connection, event):
-        
         self.last_ping = 0
+        self.save_messages()
+    
+    def save_messages(self):
+        if not self.message_cache:
+            logging.debug("no messages to save")
+            return
+        else:
+            logging.info("saving %i messages" % len(self.message_cache))
+        
         try:
             db = LumberJackDatabase( self.db )
+            logging.info("saving %i messages" % len(self.message_cache))
             for message in self.message_cache:
                 db.insert_line(message["channel"], message["name"], message["time"], message["message"], message["type"] )
             
@@ -117,18 +145,19 @@ class Logger(irclib.SimpleIRCClient):
             
             del db
             # clear the cache
-            self.message_cache = []    
+            self.message_cache = []
                 
-        except Exception, e:
-            
+        except Exception:
+            logging.error("Couldn't connect to db: %s", self.db, exc_info=True)
             if self.disconnect_countdown <= 0:
-                sys.exit( 0 )
-            connection.privmsg(self.channel, "Database connection lost! " + str(self.disconnect_countdown) + " retries until I give up entirely!" )
+                self.loop.stop()
+            # connection.privmsg(self.channel, "Database connection lost! " + str(self.disconnect_countdown) + " retries until I give up entirely!" )
             self.disconnect_countdown = self.disconnect_countdown - 1
             
 
     def on_pubmsg(self, connection, event):
         text = event.arguments()[0]
+        logging.info("pubmsg: %s", text)
 
         # If you talk to the bot, this is how he responds.
         if self.nick_reg.search(text):
@@ -140,8 +169,14 @@ class Logger(irclib.SimpleIRCClient):
             if text.split(" ")[1] and text.split(" ")[1] == "ping":
                 self.on_ping(connection, event)
                 return
+    
+    def start(self):
+        pc = ioloop.PeriodicCallback(self.save_messages, 5000, self.loop)
+        pc.start()
+        self.loop.start()
 
 def main(settings):
+    logging.basicConfig(level=logging.INFO)
     c = Logger(
                 settings["server"],
                 settings["port"],

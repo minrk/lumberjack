@@ -40,11 +40,10 @@ class LumberJackDatabase:
         
         args = (channel, name, time, message, msgtype, hidden)
         
-        query = "INSERT INTO lumberjack (channel, name, time, message, type, hidden) VALUES" + \
-        ' ?'*len(args)
+        query = "INSERT INTO lumberjack (channel, name, time, message, type, hidden) VALUES (%s)" % ', '.join((['?']*len(args)))
 
         self.cursor.execute(query, args)
-        
+    
     def commit(self):
         self.conn.commit()
 
