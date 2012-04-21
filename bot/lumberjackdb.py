@@ -2,12 +2,20 @@ import json
 import sqlite3
 import datetime
 
+def dict_factory(cursor, row):
+    d = {}
+    for idx, col in enumerate(cursor.description):
+        d[col[0]] = row[idx]
+    return d
+
 
 class LumberJackDatabase:
     
     def __init__(self, database):
         self.fname = database
-        self.conn = sqlite3.connect (database, detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
+        self.conn = sqlite3.connect (database)
+        self.conn.row_factory = dict_factory
+        #, detect_types=sqlite3.PARSE_DECLTYPES|sqlite3.PARSE_COLNAMES)
         self.cursor = self.conn.cursor()
         self.create_table()
 
