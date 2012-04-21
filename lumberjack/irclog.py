@@ -15,11 +15,11 @@ from irclib import nm_to_n, nm_to_h, irc_lower, ip_numstr_to_quad, ip_quad_to_nu
 import irclib
 
 #mine
-from lumberjackdb import LumberJackDatabase
+from ircdb import IRCDatabase
 
 # Configuration
 
-class Logger(irclib.SimpleIRCClient):
+class IRCLogger(irclib.SimpleIRCClient):
     
     def __init__(self, server, port, channel, nick, db, loop=None):
         irclib.SimpleIRCClient.__init__(self)
@@ -37,7 +37,7 @@ class Logger(irclib.SimpleIRCClient):
         self.nick = nick
         
         #DB details
-        self.db = LumberJackDatabase( db )
+        self.db = IRCDatabase( db )
 
         
         #Regexes
@@ -169,7 +169,7 @@ class Logger(irclib.SimpleIRCClient):
 
 def main(settings):
     logging.basicConfig(level=logging.INFO)
-    c = Logger(
+    c = IRCLogger(
                 settings["server"],
                 settings["port"],
                 settings["channel"],

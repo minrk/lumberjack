@@ -9,7 +9,7 @@ def dict_factory(cursor, row):
     return d
 
 
-class LumberJackDatabase:
+class IRCDatabase(object):
     
     def __init__(self, database):
         self.fname = database
@@ -162,4 +162,4 @@ class LumberJackDatabase:
 if __name__ == '__main__':
     with open('lumberjack_config.json') as f:
         settings = json.load(f)
-    db = LumberJackDatabase(settings['db'])
+    db = IRCDatabase(settings['db'])
