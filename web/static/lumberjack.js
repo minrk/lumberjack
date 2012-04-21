@@ -99,11 +99,13 @@ function home()
 	loading()
 	$.getJSON("json",
         function(data){
-        	first_id = data[0].id;
-        	$(data).each( function(i, item) { 	
-        										$(irc_render(item)).appendTo("#irc"); 
-        										last_id = item.id; 
-        									});
+            if (! data ) return;
+            first_id = data[0].id;
+            $(data).each( function(i, item) { 
+                $("#irc").append(irc_render(item));
+                console.log(irc);
+                last_id = item.id;
+            });
         	scroll_to_bottom();
         	done_loading();
 		window.location.hash = "home";
@@ -121,11 +123,13 @@ function refresh()
         	$(data).each( function(i, item) { 
         										try
         										{
-        											$(irc_render(item)).appendTo("#irc"); last_id = item.id; 
+        											$("#irc").append(irc_render(item));
+                              last_id = item.id; 
+                              console.log($("#irc"));
         										}
         										catch(err)
         										{
-        											// do nuffins
+        											console.log(err);
         										}
         									
         									});
@@ -155,11 +159,11 @@ function search_for( searchvalue )
 		if( data.length < 50 ) { $("#searchoptions").hide(); }	
         	$(data).each( function(i, item) { try
         										{
-        											$(irc_render(item)).appendTo("#irc");
+        											$("#irc").append(irc_render(item));
         										}
         										catch(err)
         										{
-        											// do nuffins
+        											console.log(err);
         										}
         									} );
         $("#irc").addClass("searchresult");
@@ -194,7 +198,7 @@ function context(id)
         function(data){
         	first_id = data[0].id;
         	$(data).each( function(i, item) { 	
-        										$(irc_render(item)).appendTo("#irc"); 
+        										$("#irc").append(irc_render(item)); 
         										last_id = item.id; 
         									});
         					
@@ -222,7 +226,7 @@ function load_more_search_results()
 		if( data.length < 50 ) { $("#searchoptions").hide(); }	
 		data.reverse();
 		$(data).each( function( i, item) {
-			$(irc_render(item)).prependTo("#irc");
+			$("#irc").prepend(irc_render(item));
 			id = item.id;
 		});
 		scroll_to_id( id );
@@ -241,7 +245,7 @@ function page_up()
         function(data){
         	$("<tr class='pagebreak'><td></td> <td>------------------------------</td> <td></td></tr>").prependTo("#irc");
         	$(data).each( function(i, item) { 	
-        										$(irc_render(item)).prependTo("#irc"); 
+        										$("#irc").prepend(irc_render(item)); 
         										first_id = item.id; 
         									});
         	scroll_to_id( first_id );
@@ -259,7 +263,7 @@ function page_down()
         function(data){
         	$("<tr class='pagebreak'><td></td> <td>------------------------------</td> <td></td></tr>").appendTo("#irc");
         	$(data).each( function(i, item) { 	
-        										$(irc_render(item)).appendTo("#irc"); 
+        										$("#irc").append(irc_render(item)); 
         										last_id = item.id; 
         									});
         								
@@ -297,7 +301,7 @@ function tag( tagname )
 	$.getJSON("json", {'type':'tag', 'tag':tagname, 'n':15 },
         function(data){
         	$(data).each( function(i, item) { 	
-        										$(irc_render(item)).appendTo("#irc");
+        										$("#irc").append(irc_render(item));
         									});
         									
 		done_loading();
@@ -312,6 +316,7 @@ function tag( tagname )
 // Convert a single IRC message into a table row
 function irc_render( item ) 
 {
+    console.log(item);
 	if ( item.hidden != "F" ) { return "";} 
 	
 	var message_tag = /^\s*([A-Za-z]*):/.exec(item.message);
@@ -325,22 +330,37 @@ function irc_render( item )
 	{
 		message_tag = "";
 	}
-	
-	var construct_string = "<tr id='irc-"+item.id+"' class='"+item.type+" "+message_tag+" " + tag_tag + "'>";
-	construct_string += "<td class='name'><a href='#id-"+item.id+"'>" + html_escape(item.name) + "</a>&nbsp;</td><td class='message'>";
+	var row = $("<tr/>");
+    row.attr("id", "irc=" + item.id)
+    row.addClass(item.type);
+    row.addClass(message_tag);
+    row.addClass(tag_tag);
+    row.append(
+        $("<td/>").addClass('name').append(
+            $('<a/>').attr("href", "#id-" + item.id).html(item.name)
+        )
+    );
+    var msg_td = $("<td/>").addClass('message');
+
+	var construct_string = "";
 	
 	if (item.type == "pubmsg") { construct_string += ":&nbsp;";}
-	else if (item.type == "join") { construct_string += "has joined #" + html_escape(item.channel); }
-	else if (item.type == "part") { construct_string += "has left #" + html_escape(item.channel) + " -- "; }
+	else if (item.type == "join") { construct_string += "has joined " + html_escape(item.channel); }
+	else if (item.type == "part") { construct_string += "has left " + html_escape(item.channel) + " -- "; }
 	else if (item.type == "topic") { construct_string += "has changed the topic: <br/>"; } 
 	else if (item.type == "nick") { construct_string += "is now known as ";}
-	else if (item.type == "action") { } 
+	else if (item.type == "action") { }
 
-	construct_string += link_replace(html_escape(item.message)) + "</td>";
+	construct_string += link_replace(html_escape(item.message));
+    msg_td.html(construct_string);
+    row.append(
+        msg_td
+    );
 	var message_date = datetimeify(item.time);
-	var pretty_date = human_date(message_date);
-	construct_string += "<td class='date'>" + pretty_date + "</td>";
-	return $(construct_string);
+    row.append(
+        $("<td/>").addClass('date').html(human_date(message_date))
+    );
+	return row;
 }
 
 // Make links clickable, and images images
@@ -379,22 +399,23 @@ function done_loading()
 // Clears the IRC area.
 function clear()
 {
-	$("#irc").html("");	
+    console.log("clear");
+    $("#irc").html("");
 }
 
 // Scroll to the bottom of the page
 function scroll_to_bottom()
 {
-	$target = $("#bottom");
-	var targetOffset = $target.offset().top;
+	var target = $("#bottom");
+	var targetOffset = target.offset().top;
 	$('html,body').animate({scrollTop: targetOffset}, 1000);
 }
 
 // Attempt to scroll to the id of the item specified.
 function scroll_to_id(id)
 {
-	$target = $("#irc-"+id);
-	var targetOffset = $target.offset().top - 100;
+	var target = $("#irc-"+id);
+	var targetOffset = target.offset().top - 100;
 	$('html,body').animate({scrollTop: targetOffset}, 1000);
 }
 
