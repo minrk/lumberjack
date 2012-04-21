@@ -162,9 +162,12 @@ class IRCLogger(irclib.SimpleIRCClient):
                 self.on_ping(connection, event)
                 return
     
-    def start(self):
-        pc = ioloop.PeriodicCallback(self.save_messages, 5000, self.loop)
+    def start_saving(self, interval=5000):
+        pc = ioloop.PeriodicCallback(self.save_messages, interval, self.loop)
         pc.start()
+    
+    def start(self):
+        self.start_saving()
         self.loop.start()
 
 def main(settings):

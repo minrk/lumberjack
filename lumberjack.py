@@ -12,6 +12,7 @@ import tornado.web
 from tornado.options import define, options
 
 from lumberjack.ircdb import IRCDatabase
+from lumberjack.irclog import IRCLogger
 from lumberjack.handlers import JSONHandler
 
 define("port", default=8888, help="run on the given port", type=int)
@@ -24,15 +25,24 @@ class IndexHandler(tornado.web.RequestHandler):
 def main():
     tornado.options.parse_command_line()
     with open(options.config) as f:
-        config = json.load(f)
+        settings = json.load(f)
+    
+    logger = IRCLogger(
+                settings["server"],
+                settings["port"],
+                settings["channel"],
+                settings["nick"],
+                settings['db'],
+    )
+    logger.start_saving(5000)
     
     application = tornado.web.Application([
         (r"/", IndexHandler),
         (r"/json", JSONHandler),
         ],
         static_path=os.path.join(os.path.dirname(__file__), "static"),
-        db = IRCDatabase(config['db']),
-        channel = config['channel'],
+        db = IRCDatabase(settings['db']),
+        channel = settings['channel'],
     )
     
     http_server = tornado.httpserver.HTTPServer(application)

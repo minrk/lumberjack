@@ -68,21 +68,21 @@ class IRCDatabase(object):
         cursor = self.cursor.execute(query, (channel, n))
         return reversed(list(cursor))
     
-    def get_before(self, channel, id, limit=500):
+    def get_before(self, channel, id, n=100):
         query = """SELECT * FROM lumberjack
                 WHERE channel = ? AND id < ?
                 ORDER BY time DESC, id DESC LIMIT ?
         """
-        return self.cursor.execute(query, (channel, id, limit))
+        return self.cursor.execute(query, (channel, id, n))
     
-    def get_after(self, channel, id, limit=500):
+    def get_after(self, channel, id, n=100):
         query = """SELECT * FROM lumberjack
                 WHERE channel = ? AND id > ?
                 ORDER BY time ASC, id DESC LIMIT ?
         """
-        return self.cursor.execute(query, (channel, id, limit))
+        return self.cursor.execute(query, (channel, id, n))
     
-    def get_between_now_and_id(self, channel, id, limit=500):
+    def get_since_id(self, channel, id, limit=500):
         query = """SELECT * FROM lumberjack
                 WHERE channel = ? AND id > ? 
                 ORDER BY time ASC, id DESC LIMIT ?
