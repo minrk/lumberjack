@@ -103,7 +103,6 @@ function home()
     first_id = data[0].id;
     $(data).each( function(i, item) { 
       $("#irc").append(irc_render(item));
-      console.log(irc);
       last_id = item.id;
     });
     scroll_to_bottom();
@@ -125,7 +124,6 @@ function refresh()
       {
         $("#irc").append(irc_render(item));
         last_id = item.id; 
-        console.log($("#irc"));
       }
       catch(err)
       {
@@ -316,7 +314,6 @@ function tag( tagname )
 // Convert a single IRC message into a table row
 function irc_render( item ) 
 {
-  console.log(item);
   if ( item.hidden != "F" ) { return "";} 
 
   var message_tag = /^\s*([A-Za-z]*):/.exec(item.message);
