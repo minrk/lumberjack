@@ -15,7 +15,7 @@ from irclib import nm_to_n, nm_to_h, irc_lower, ip_numstr_to_quad, ip_quad_to_nu
 import irclib
 
 #mine
-from ircdb import IRCDatabase
+from ircdb import IRCDatabase, cast_unicode
 
 # Configuration
 
@@ -48,15 +48,32 @@ class IRCLogger(irclib.SimpleIRCClient):
         
         #Disconnect Countdown
         self.disconnect_countdown = 5
+        
+        self._connect()
+        
+        self.last_ping = time.time()
+        
+        self.ping_callback = pc = ioloop.PeriodicCallback(self._no_ping, 60000, self.loop)
+        pc.start()
+        
+        self.connect_callback = cc = ioloop.PeriodicCallback(self._check_connect, 30000, self.loop)
+        cc.start()
+        
     
-        self.last_ping = 0
-        self.ircobj.delayed_commands.append( (time.time()+5, self._no_ping, [] ) )
-     
-        self.connect(self.server, self.port, self.nick)
+    def _check_connect(self):
+        """Connect to a new server, possibly disconnecting from the current.
+
+        The bot will skip to next server in the server_list each time
+        jump_server is called.
+        """
+        
+        logging.debug("checking connection")
+        if not self.connection.is_connected():
+            self._connect()
     
-    def connect(self, *args, **kwargs):
-        logging.debug("IRC:connecting...")
-        irclib.SimpleIRCClient.connect(self, *args, **kwargs)
+    def _connect(self):
+        logging.info("IRC:connecting...")
+        irclib.SimpleIRCClient.connect(self, self.server, self.port, self.nick)
         self.loop.add_handler(self.connection.socket.fileno(), self._handle_message, self.loop.READ)
     
     def _handle_message(self, fd, events):
@@ -64,26 +81,26 @@ class IRCLogger(irclib.SimpleIRCClient):
         self.connection.process_data()
     
     def _no_ping(self):
-        if self.last_ping >= 1200:
-            raise irclib.ServerNotConnectedError
-        else:
-            self.last_ping += 10
-        self.ircobj.delayed_commands.append( (time.time()+10, self._no_ping, [] ) )
-
+        elapsed = time.time() - self.last_ping
+        logging.debug("last ping: %is ago", elapsed)
+        if elapsed >= 1200:
+            logging.critical("No ping in %is: shutting down", elapsed)
+            self.loop.stop()
 
     def _dispatcher(self, c, e):
         """dispatch events"""
         etype = e.eventtype()
+        logging.debug("dispatch: %s", etype)
         if etype in ('topic', 'part', 'join', 'action', 'quit', 'nick', 'pubmsg'):
             try: 
-                source = e.source().split("!")[0]
+                source = cast_unicode(e.source().split("!")[0])
             except IndexError:
-                source = ""
+                source = u''
             try:
-                text = e.arguments()[0]
+                text = cast_unicode(e.arguments()[0])
             except IndexError:
-                text = ""
-        
+                text = u''
+            
             # Prepare a message for the buffer
             message_dict = {"channel": self.channel,
                             "name": source,
@@ -112,13 +129,14 @@ class IRCLogger(irclib.SimpleIRCClient):
             connection.join(self.target)
 
     def on_disconnect(self, connection, event):
-        logging.info("disconnect")
+        logging.warn("disconnect")
         self.on_ping(connection, event)
         connection.disconnect()
-        raise irclib.ServerNotConnectedError
+        ioloop.IOLoop.instance().add_timeout(time.time()+30, self._connect)
 
     def on_ping(self, connection, event):
-        self.last_ping = 0
+        logging.info("ping")
+        self.last_ping = time.time()
         self.save_messages()
     
     def save_messages(self):
@@ -148,7 +166,11 @@ class IRCLogger(irclib.SimpleIRCClient):
             
 
     def on_pubmsg(self, connection, event):
-        text = event.arguments()[0]
+        try:
+            text = cast_unicode(event.arguments()[0])
+        except IndexError:
+            text = u''
+        
         logging.info("pubmsg: %s", text)
 
         # If you talk to the bot, this is how he responds.
@@ -171,7 +193,7 @@ class IRCLogger(irclib.SimpleIRCClient):
         self.loop.start()
 
 def main(settings):
-    logging.basicConfig(level=logging.INFO)
+    logging.basicConfig(level=settings.get('loglevel', logging.INFO))
     c = IRCLogger(
                 settings["server"],
                 settings["port"],
@@ -190,6 +212,7 @@ if __name__ == "__main__":
         try:
             main(settings)
         except irclib.ServerNotConnectedError:
-            print "Server Not Connected! Let's try again!"             
-            time.sleep(float(reconnect_interval))
+            pass
+        print "Server Not Connected! Let's try again!"
+        time.sleep(float(reconnect_interval))
             

@@ -8,6 +8,11 @@ def dict_factory(cursor, row):
         d[col[0]] = row[idx]
     return d
 
+def cast_unicode(s):
+    if isinstance(s, unicode):
+        return s
+    else:
+        return s.decode('utf8', 'replace')
 
 class IRCDatabase(object):
     
@@ -47,7 +52,7 @@ class IRCDatabase(object):
         """
         Sample line: "sfucsss, danly, 12:33-09/11/2009, I love hats, normal, 0"
         """
-        
+        channel, name, message = [ cast_unicode(s) for s in (channel, name, message)]
         args = (channel, name, time, message, msgtype, hidden)
         
         query = """INSERT INTO lumberjack

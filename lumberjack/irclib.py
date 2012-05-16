@@ -927,6 +927,8 @@ class DCCConnection(Connection):
         """
         if not self.connected:
             return
+        
+        logging.warn("Disconnecting: %s", message)
 
         self.connected = 0
         try:
