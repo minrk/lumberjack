@@ -72,7 +72,7 @@ class IRCLogger(irclib.SimpleIRCClient):
             self._connect()
     
     def _connect(self):
-        logging.info("IRC:connecting...")
+        logging.info("IRC:connecting to %s:%i %s as %s...", self.server, self.port, self.channel, self.nick)
         irclib.SimpleIRCClient.connect(self, self.server, self.port, self.nick)
         self.loop.add_handler(self.connection.socket.fileno(), self._handle_message, self.loop.READ)
     
@@ -84,7 +84,7 @@ class IRCLogger(irclib.SimpleIRCClient):
         elapsed = time.time() - self.last_ping
         logging.debug("last ping: %is ago", elapsed)
         if elapsed >= 1200:
-            logging.critical("No ping in %is: shutting down", elapsed)
+            logging.critical("No ping in %is: reconnecting", elapsed)
             self.loop.stop()
 
     def _dispatcher(self, c, e):
@@ -119,7 +119,7 @@ class IRCLogger(irclib.SimpleIRCClient):
             getattr(self, m)(c, e)
 
     def on_nicknameinuse(self, c, e):
-        logging.error("nick in use")
+        logging.error("nick in use: %s", c.get_nickname())
         
         c.nick(c.get_nickname() + "_")
 
