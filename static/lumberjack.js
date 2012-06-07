@@ -328,7 +328,7 @@ function irc_render( item )
     message_tag = "";
   }
   var row = $("<tr/>");
-  row.attr("id", "irc=" + item.id)
+  row.attr("id", "irc-" + item.id)
   row.addClass(item.type);
   row.addClass(message_tag);
   row.addClass(tag_tag);
