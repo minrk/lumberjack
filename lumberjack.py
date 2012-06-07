@@ -15,7 +15,8 @@ from lumberjack.ircdb import IRCDatabase
 from lumberjack.irclog import IRCLogger
 from lumberjack.handlers import JSONHandler
 
-define("port", default=8888, help="run on the given port", type=int)
+# 8172 = int(''.join(map(str, map(string.uppercase.index, 'IRC'))))
+define("port", default=8172, help="run on the given port", type=int)
 define("config", default="lumberjack_config.json", type=str)
 
 class IndexHandler(tornado.web.RequestHandler):
@@ -47,7 +48,11 @@ def main():
     
     http_server = tornado.httpserver.HTTPServer(application)
     http_server.listen(options.port)
-    tornado.ioloop.IOLoop.instance().start()
+    try:
+        tornado.ioloop.IOLoop.instance().start()
+    finally:
+        # close connections
+        http_server.stop()
 
 
 if __name__ == "__main__":
