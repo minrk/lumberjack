@@ -131,7 +131,6 @@ class IRCLogger(irclib.SimpleIRCClient):
     def on_disconnect(self, connection, event):
         logging.warn("disconnect")
         self.on_ping(connection, event)
-        connection.disconnect()
         ioloop.IOLoop.instance().add_timeout(time.time()+30, self._connect)
 
     def on_ping(self, connection, event):
