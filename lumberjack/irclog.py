@@ -90,7 +90,7 @@ class IRCLogger(irclib.SimpleIRCClient):
     def _dispatcher(self, c, e):
         """dispatch events"""
         etype = e.eventtype()
-        logging.debug("dispatch: %s", etype)
+        logging.debug(u"dispatch: %s: %r : %r : %r", etype, e.target(), e.source(), e.arguments())
         if etype in ('topic', 'part', 'join', 'action', 'quit', 'nick', 'pubmsg'):
             try: 
                 source = cast_unicode(e.source().split("!")[0])
@@ -102,7 +102,7 @@ class IRCLogger(irclib.SimpleIRCClient):
                 text = u''
             
             # Prepare a message for the buffer
-            message_dict = {"channel": e.target(),
+            message_dict = {"channel": e.target() or u'',
                             "name": source,
                             "message": text,
                             "type": e.eventtype(),
