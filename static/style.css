@@ -122,6 +122,12 @@ a
 		color: green;
 	}
 
+	#irc .part, #irc .part a, #irc .quit, #irc .quit a
+	{
+		font-size:small;
+		color: red;
+	}
+
 	#irc  .action, #irc .action a
 	{
 		color: purple;
@@ -139,12 +145,6 @@ a
 		color: darkblue;
 	}
 
-	#irc .quit, #irc .quit a
-	{
-		font-size: small;
-		color: #666;
-	}
-	
 	.tag
 	{
 		font-weight: bold;
