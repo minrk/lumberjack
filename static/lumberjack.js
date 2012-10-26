@@ -12,12 +12,17 @@ var hash = "#";// The most recent hash value in the URL ("#search-poop")
 
 var current_offset = 50; // The current search offset;
 var most_recent_search = ""; //The last thing searched for. 
-
+var channel = null; // the channel being served
 
 // On Load
 $(function() {
 
+  // set the channel
+  channel = getParam("channel");
+  if (channel && channel[0] != '#') channel = '#' + channel;
+  
   // check for new content every N seconds
+  
   setInterval("refresh()", irc_refresh_in_seconds * 1000);
   setInterval("hashnav_check()", page_hash_check_in_seconds * 1000);
     
@@ -35,6 +40,21 @@ $(function() {
   $("#searchoptions").hide();
 });
 
+
+// getParam from http://ziemecki.net/content/javascript-parsing-url-parameters
+function getParam ( sname )
+{
+  var params = window.location.search.substr(location.search.indexOf("?")+1);
+  var sval = "";
+  params = params.split("&");
+    // split param and value into individual pieces
+    for (var i=0; i<params.length; i++)
+       {
+         temp = params[i].split("=");
+         if ( [temp[0]] == sname ) { sval = temp[1]; }
+       }
+  return sval;
+}
 // Navigate around the site based on the site hash.
 // This allows for use of the "Back" button, as well as reusable URL structure. 
 function hashnav()
@@ -97,9 +117,13 @@ function home()
   $("#searchoptions").hide();
   // Ajax call to populate table
   loading()
-  $.getJSON("json",
+  $.getJSON("json", { 'channel': channel},
   function(data){
-    if (! data ) return;
+    if (! data || ! data.length ){
+        done_loading();
+        return;
+    }
+    console.log(data);
     first_id = data[0].id;
     $(data).each( function(i, item) { 
       $("#irc").append(irc_render(item));
@@ -117,7 +141,7 @@ function refresh()
 {
   if( !refresh_on ) { return; }
   loading();
-  $.getJSON("json", { 'type':'update', 'id': last_id },
+  $.getJSON("json", { 'type':'update', 'id': last_id, 'channel': channel },
   function(data){
     $(data).each( function(i, item) { 
       try
@@ -152,7 +176,7 @@ function search_for( searchvalue )
   loading();
 
   // Ajax call to get search results
-  $.getJSON("json", {'search':searchvalue}, 
+  $.getJSON("json", {'search':searchvalue, 'channel': channel},
   function(data){
     if( data.length < 50 ) { $("#searchoptions").hide(); }
     $(data).each( function(i, item) { try
@@ -192,8 +216,12 @@ function context(id)
   loading();
 
   // Ajax call to get 'context' (find the comment at id 'id' and 'n' spaces around it). 
-  $.getJSON("json", {'type':'context', 'id':id },
+  $.getJSON("json", {'type':'context', 'id':id, 'channel': channel },
   function(data){
+    if (! data || ! data.length ){
+        done_loading();
+        return;
+    }
     first_id = data[0].id;
     $(data).each( function(i, item) { 
       $("#irc").append(irc_render(item)); 
@@ -217,7 +245,7 @@ function load_more_search_results()
 
   // Ajax call
   loading();
-  $.getJSON("json", {'type':'search', 'n':50, 'offset':current_offset, 'search':most_recent_search },
+  $.getJSON("json", {'type':'search', 'n':50, 'offset':current_offset, 'search':most_recent_search, 'channel': channel },
   function(data){ 
     $("<tr class='pagebreak'><td></td> <td>------------------------------</td> <td></td></tr>").prependTo("#irc");
     var id = 0;
@@ -239,7 +267,7 @@ function page_up()
 {
   // Ajax call to populate table
   loading();
-  $.getJSON("json", {'type':'context', 'id':first_id, 'n':20, 'context':'before' },
+  $.getJSON("json", {'type':'context', 'id':first_id, 'n':20, 'context':'before', 'channel': channel },
   function(data){
     $("<tr class='pagebreak'><td></td> <td>------------------------------</td> <td></td></tr>").prependTo("#irc");
     $(data).each( function(i, item) { 
@@ -257,7 +285,7 @@ function page_down()
 {
   loading();
 
-  $.getJSON("json", {'type':'context', 'id':last_id, 'n':20, 'context':'after' },
+  $.getJSON("json", {'type':'context', 'id':last_id, 'n':20, 'context':'after', 'channel': channel },
   function(data){
     $("<tr class='pagebreak'><td></td> <td>------------------------------</td> <td></td></tr>").appendTo("#irc");
     $(data).each( function(i, item) { 
@@ -296,7 +324,7 @@ function tag( tagname )
   $('#irc').removeClass("searchresult");
 
   loading();
-  $.getJSON("json", {'type':'tag', 'tag':tagname, 'n':15 },
+  $.getJSON("json", {'type':'tag', 'tag':tagname, 'n':15, 'channel': channel },
   function(data){
     $(data).each( function(i, item) { 
       $("#irc").append(irc_render(item));

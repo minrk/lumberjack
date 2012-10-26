@@ -27,15 +27,21 @@ def main():
     tornado.options.parse_command_line()
     with open(options.config) as f:
         settings = json.load(f)
-    
+    assert 'channel' in settings or 'channels' in settings, "must have channel OR channels defined"
+        
+    if 'channels' not in settings:
+        settings['channels'] = [settings['channel']]
+    elif 'channel' not in settings:
+        settings['channel'] = settings['channels'][0]
+    settings.setdefault('save_interval', 5000)
     logger = IRCLogger(
                 settings["server"],
                 settings["port"],
-                settings["channel"],
+                settings['channels'],
                 settings["nick"],
                 settings['db'],
     )
-    logger.start_saving(5000)
+    logger.start_saving(settings['save_interval'])
     
     application = tornado.web.Application([
         (r"/", IndexHandler),

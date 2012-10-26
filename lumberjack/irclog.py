@@ -21,7 +21,7 @@ from ircdb import IRCDatabase, cast_unicode
 
 class IRCLogger(irclib.SimpleIRCClient):
     
-    def __init__(self, server, port, channel, nick, db, loop=None):
+    def __init__(self, server, port, channels, nick, db, loop=None):
         irclib.SimpleIRCClient.__init__(self)
         
         # tornado ioloop
@@ -33,8 +33,7 @@ class IRCLogger(irclib.SimpleIRCClient):
         #IRC details
         self.server = server
         self.port = port
-        self.target = channel
-        self.channel = channel
+        self.channels = channels
         self.nick = nick
         
         #DB details
@@ -73,7 +72,7 @@ class IRCLogger(irclib.SimpleIRCClient):
             self._connect()
     
     def _connect(self):
-        logging.info("IRC:connecting to %s:%i %s as %s...", self.server, self.port, self.channel, self.nick)
+        logging.info("IRC:connecting to %s:%i %s as %s...", self.server, self.port, self.channels, self.nick)
         irclib.SimpleIRCClient.connect(self, self.server, self.port, self.nick)
         self.loop.add_handler(self.connection.socket.fileno(), self._handle_message, self.loop.READ)
     
@@ -103,7 +102,7 @@ class IRCLogger(irclib.SimpleIRCClient):
                 text = u''
             
             # Prepare a message for the buffer
-            message_dict = {"channel": self.channel,
+            message_dict = {"channel": e.target(),
                             "name": source,
                             "message": text,
                             "type": e.eventtype(),
@@ -126,8 +125,8 @@ class IRCLogger(irclib.SimpleIRCClient):
 
     def on_welcome(self, connection, event):
         logging.info("welcome")
-        if irclib.is_channel(self.target):
-            connection.join(self.target)
+        for channel in self.channels:
+            connection.join(channel)
 
     def on_disconnect(self, connection, event):
         logging.warn("disconnect")
