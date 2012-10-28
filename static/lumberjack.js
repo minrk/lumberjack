@@ -123,7 +123,6 @@ function home()
         done_loading();
         return;
     }
-    console.log(data);
     first_id = data[0].id;
     $(data).each( function(i, item) { 
       $("#irc").append(irc_render(item));
