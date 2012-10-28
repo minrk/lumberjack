@@ -94,7 +94,7 @@ class IRCDatabase(object):
     
     def filter_silence(self, results):
         last_r = None
-        for r in results:
+        for r in list(results):
             last_r = r
             if r['type'] == 'join':
                 if not self._silent_after(r):

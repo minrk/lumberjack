@@ -35,7 +35,6 @@ class JSONHandler(tornado.web.RequestHandler):
                 method = db.get_context
             for i in range(1,10):
                 result = list(db.filter_silence(method(channel, id, i * n)))
-                print i, len(result)
                 if len(result) >= n:
                     break
         
