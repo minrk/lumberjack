@@ -238,6 +238,23 @@ function context(id)
     
 }
 
+/// add a pagebreak
+function add_page_break(prepend) {
+    var tr = $("<tr/>").addClass("pagebreak").append(
+        $("<td/>").addClass("name")
+    ).append(
+        $("<td/>").addClass("message").html("------------------------------")
+    ).append(
+        $("<td/>").addClass("date")
+    );
+    if (prepend) {
+        $("#irc").prepend(tr);
+    } else {
+        $("#irc").append(tr);
+    }
+    
+}
+
 // Add n more search results
 function load_more_search_results()
 {
@@ -246,8 +263,9 @@ function load_more_search_results()
   // Ajax call
   loading();
   $.getJSON("json", {'type':'search', 'n':50, 'offset':current_offset, 'search':most_recent_search, 'channel': channel },
-  function(data){ 
-    $("<tr class='pagebreak'><td></td> <td>------------------------------</td> <td></td></tr>").prependTo("#irc");
+  function(data){
+    add_page_break(true);
+    // $("<tr class='pagebreak'><td></td> <td>------------------------------</td> <td></td></tr>").prependTo("#irc");
     var id = 0;
     if( data.length < 50 ) { $("#searchoptions").hide(); }
     data.reverse();
@@ -269,7 +287,9 @@ function page_up()
   loading();
   $.getJSON("json", {'type':'context', 'id':first_id, 'n':20, 'context':'before', 'channel': channel },
   function(data){
-    $("<tr class='pagebreak'><td></td> <td>------------------------------</td> <td></td></tr>").prependTo("#irc");
+    add_page_break(true);
+      
+    // $("<tr class='pagebreak'><td></td> <td>------------------------------</td> <td></td></tr>").prependTo("#irc");
     $(data).each( function(i, item) { 
       $("#irc").prepend(irc_render(item)); 
       first_id = item.id; 
@@ -287,7 +307,8 @@ function page_down()
 
   $.getJSON("json", {'type':'context', 'id':last_id, 'n':20, 'context':'after', 'channel': channel },
   function(data){
-    $("<tr class='pagebreak'><td></td> <td>------------------------------</td> <td></td></tr>").appendTo("#irc");
+    add_page_break(false);
+    // $("<tr class='pagebreak'><td></td> <td>------------------------------</td> <td></td></tr>").appendTo("#irc");
     $(data).each( function(i, item) { 
       $("#irc").append(irc_render(item)); 
       last_id = item.id; 
@@ -440,6 +461,7 @@ function scroll_to_bottom()
 function scroll_to_id(id)
 {
   var target = $("#irc-"+id);
+  if (target.offset() === null) return;
   var targetOffset = target.offset().top - 100;
   $('html,body').animate({scrollTop: targetOffset}, 1000);
 }
