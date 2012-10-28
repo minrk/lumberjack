@@ -390,7 +390,7 @@ function irc_render( item )
 
   var construct_string = "";
 
-  if (item.type == "pubmsg") { construct_string += ":&nbsp;";}
+  if (item.type == "pubmsg") { }
   else if (item.type == "join") { construct_string += "has joined " + html_escape(item.channel); }
   else if (item.type == "part") { construct_string += "has left " + html_escape(item.channel) + " -- "; }
   else if (item.type == "topic") { construct_string += "has changed the topic: <br/>"; } 
@@ -488,33 +488,38 @@ function datetimeify( mysql_date_string )
 function human_date( date )
 {
   var td = new Date();
-  var dt = date.toDateString()
-  if( date.getDate() == td.getDate() && 
-  date.getMonth() == td.getMonth() &&
-  date.getYear() == td.getYear() ) { dt = "Today"; }
+  var dt = date.toDateString();
+  if ( date.getDate() == td.getDate() && 
+      date.getMonth() == td.getMonth() &&
+      date.getYear() == td.getYear() ) {
+    dt = "";
+  }
 
   var yesterday = new Date();
   yesterday.setDate( td.getDate() - 1 );
 
-  if( date.getDate() == yesterday.getDate() && 
-  date.getMonth() == yesterday.getMonth() &&
-  date.getYear() == yesterday.getYear() ) { dt = "Yesterday";}
+  if ( date.getDate() == yesterday.getDate() && 
+      date.getMonth() == yesterday.getMonth() &&
+      date.getYear() == yesterday.getYear() ) {
+    dt = "Yesterday";
+  }
+  
+  var hours = date.getHours();
+  var minutes = date.getHours();
 
-  if( hours == 0 && minutes == 0 ) { return dt + " - Midnight"; }
-  else if( hours == 12 && minutes == 0 ){ return dt + " - Noon"; } 
-  else
-  {
-    var ampm = "AM";
-    var hours = date.getHours();
-    if(hours > 11){ hours = hours - 12; ampm = "PM"; }
-
-    var minutes = date.getMinutes();
-    if( minutes < 10 ){ minutes = "0" + minutes; } 
-
-    // I find it strange, but in a 12-hour clock, '12' acts as 0. 
-    if( hours == 0 ) { hours = 12; }
-
-    return dt + " - " + hours + ":" + minutes + " " + ampm;
+  if ( hours == 0 && minutes == 0 ) {
+    ts = "Midnight";
+  } else if (  hours == 12 && minutes == 0 ) { 
+    ts = "Noon";
+  } else {
+    if ( hours < 10 ) hours = '0' + hours;
+    if ( minutes < 10 ) minutes = '0' + minutes;
+    ts = hours + ":" + minutes;
+  }
+  if ( dt ) {
+    return dt + ' - ' + ts;
+  } else {
+    return ts;
   }
 }
 
