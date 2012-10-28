@@ -11,10 +11,10 @@ import tornado.web
 class JSONHandler(tornado.web.RequestHandler):
     def get(self):
         db = self.settings['db']
-        n = self.get_argument('n', 50)
-        id = self.get_argument('id', 0)
+        n = int(self.get_argument('n', 50))
+        id = int(self.get_argument('id', 0))
         channel = self.get_argument('channel', self.settings['channel'])
-        offset = self.get_argument('offset', 0)
+        offset = int(self.get_argument('offset', 0))
         switch = self.get_argument('type', 'tail')
         search = self.get_arguments('search', [])
         if search:
@@ -28,11 +28,17 @@ class JSONHandler(tornado.web.RequestHandler):
         elif switch == 'context':
             ctx = self.get_argument('context', 'middle')
             if ctx == 'before':
-                result = db.get_before(channel, id, n)
+                method = db.get_before
             elif ctx == 'after':
-                result = db.get_after(channel, id, n)
+                method = db.get_after
             else:
-                result = db.get_context(channel, id, n)
+                method = db.get_context
+            for i in range(1,10):
+                result = list(db.filter_silence(method(channel, id, i * n)))
+                print i, len(result)
+                if len(result) >= n:
+                    break
+        
         elif switch == 'tag':
             result = db.get_tag(channel, tag, limit=n)
         elif switch == 'user':
@@ -44,5 +50,8 @@ class JSONHandler(tornado.web.RequestHandler):
         else:
             logging.error("unhandled request: %s" % switch)
             raise tornado.web.HTTPError(404)
+        
+        if switch not in ('context', 'user', 'lastseen'):
+            result = db.filter_silence(result)
         self.write(json.dumps(list(result)))
     

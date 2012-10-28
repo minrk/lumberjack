@@ -14,6 +14,7 @@ def cast_unicode(s):
     else:
         return s.decode('utf8', 'replace')
 
+
 class IRCDatabase(object):
     
     def __init__(self, database):
@@ -29,7 +30,7 @@ class IRCDatabase(object):
             self.conn.close()
         except:
             pass
-
+    
     def create_table(self):
         self.cursor.execute(
         """
@@ -65,6 +66,77 @@ class IRCDatabase(object):
     def commit(self):
         self.conn.commit()
     
+    def _silent_after(self, r):
+        if r['type'] == 'nick':
+            name = r['message']
+        else:
+            name = r['name']
+        after = self.get_user_after(r['channel'], name, r['id'])
+        for entry in after:
+            if entry['type'] == 'pubmsg':
+                return False
+            elif entry['type'] in ('quit', 'part'):
+                return True
+            elif entry['type'] == 'nick':
+                return self._silent_after(entry)
+        return True
+    
+    def _silent_before(self, r):
+        before = self.get_user_before(r['channel'], r['name'], r['id'])
+        for entry in before:
+            if entry['type'] == 'pubmsg':
+                return False
+            elif entry['type'] == 'join':
+                return True
+            elif entry['type'] == 'nick':
+                return self._silent_before(entry)
+        return True
+    
+    def filter_silence(self, results):
+        last_r = None
+        for r in results:
+            last_r = r
+            if r['type'] == 'join':
+                if not self._silent_after(r):
+                    yield r
+            elif r['type'] in ('quit', 'part'):
+                if not self._silent_before(r):
+                    yield r
+            elif r['type'] == 'nick':
+                if not self._silent_after(r):
+                    yield r
+                elif not self._silent_before(r):
+                    yield r
+            else:
+                yield r
+        if last_r:
+            r = {
+                'id' : last_r['id'],
+                'time' : last_r['time'],
+                'channel' : last_r['channel'],
+                'type' : 'marker',
+                'hidden' : 'T',
+                'message' : '',
+                'name' : '',
+            }
+            yield r
+    
+    def get_user_before(self, channel, user, id):
+        query = """SELECT * FROM lumberjack
+                WHERE channel = ? AND name = ? AND id < ?
+                ORDER BY time DESC, id DESC
+        """
+        cursor = self.cursor.execute(query, (channel, user, id))
+        return cursor
+    
+    def get_user_after(self, channel, user, id):
+        query = """SELECT * FROM lumberjack
+                WHERE channel = ? AND name = ? AND id > ?
+                ORDER BY time ASC, id ASC
+        """
+        cursor = self.cursor.execute(query, (channel, user, id))
+        return cursor
+    
     def get_last(self, channel, n=100):
         query = """SELECT * FROM lumberjack 
                 WHERE channel = ? 
@@ -83,7 +155,7 @@ class IRCDatabase(object):
     def get_after(self, channel, id, n=100):
         query = """SELECT * FROM lumberjack
                 WHERE channel = ? AND id > ?
-                ORDER BY time ASC, id DESC LIMIT ?
+                ORDER BY time ASC, id ASC LIMIT ?
         """
         return self.cursor.execute(query, (channel, id, n))
     
