@@ -34,6 +34,10 @@ class IRCLogger(irclib.SimpleIRCClient):
         self.server = server
         self.port = port
         self.channels = channels
+        self.names = {}
+        for channel in self.channels:
+            self.names[channel] = set()
+        
         self.nick = nick
         
         #DB details
@@ -101,18 +105,38 @@ class IRCLogger(irclib.SimpleIRCClient):
             except IndexError:
                 text = u''
             
+            # update names lists
+            if etype == 'join':
+                channel = e.target()
+                self.names[channel].add(source)
+            elif etype in ('quit', 'part'):
+                channel = e.target()
+                self.names[channel].remove(source)
+            
             # Prepare a message for the buffer
             message_dict = {"channel": e.target() or u'',
                             "name": source,
                             "message": text,
-                            "type": e.eventtype(),
+                            "type": etype,
                             "time": datetime.datetime.utcnow() } 
                             
             if etype == "nick":
                 message_dict["message"] = e.target()
-            
-            # Most of the events are pushed to the buffer. 
-            self.message_cache.append( message_dict )
+                before = source
+                after = e.target()
+                
+                found = []
+                for channel, nameset in self.names.items():
+                    if before in nameset:
+                        nameset.remove(before)
+                        nameset.add(after)
+                        logging.info("%s renamed to %s in %s", before, after, channel)
+                        md = dict(message_dict)
+                        md['channel'] = channel
+                        self.message_cache.append( md )
+            else:
+                # Most of the events are pushed to the buffer. 
+                self.message_cache.append( message_dict )
         
         m = "on_" + etype
         if hasattr(self, m):
@@ -134,9 +158,20 @@ class IRCLogger(irclib.SimpleIRCClient):
         if self._disconnect_timeout:
             self._disconnect_timeout.cancel()
         self._disconnect_timeout = self.loop.add_timeout(time.time()+30, self._connect)
+    
+    def on_namreply(self, connection, event):
+        owner = cast_unicode(event.arguments()[0])
+        channel = cast_unicode(event.arguments()[1])
+        names = cast_unicode(event.arguments()[-1]).split()
+        logging.info("got names for %s: %s", channel, names)
+        nameset = self.names[channel]
+        for name in names:
+            nameset.add(name.lstrip(owner))
+        
 
     def on_ping(self, connection, event):
         logging.info("ping")
+        logging.debug("Current channel members: %s", self.names)
         self.last_ping = time.time()
         self.save_messages()
     
