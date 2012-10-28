@@ -86,7 +86,7 @@ a
 
 	#irc .name
 	{
-    width: 100px;
+    width: 120px;
     padding-right: 8px;
 		text-align: right;
 		word-wrap: break-word;
@@ -95,7 +95,7 @@ a
 
 	#irc  .date
 	{
-		width: 100px;
+    width: 120px;
 		word-wrap: break-word;
 		font-size: x-small;
 		text-align: right;
@@ -104,7 +104,6 @@ a
 	
 	#irc .message
 	{
-		width: 60%;
 		word-wrap: break-word;
 		padding-top: 2px;
 		padding-bottom: 2px;
@@ -124,7 +123,7 @@ a
 	#irc .part, #irc .part a, #irc .quit, #irc .quit a
 	{
 		font-size:small;
-		color: red;
+		color: #922;
 	}
 
 	#irc  .action, #irc .action a
