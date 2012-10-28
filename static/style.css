@@ -86,8 +86,8 @@ a
 
 	#irc .name
 	{
-		width: 25%;
-		max-width: 100px;
+    width: 100px;
+    padding-right: 8px;
 		text-align: right;
 		word-wrap: break-word;
 		font-weight: bold;
@@ -95,8 +95,7 @@ a
 
 	#irc  .date
 	{
-		width: 15%;
-		max-width: 100px;
+		width: 100px;
 		word-wrap: break-word;
 		font-size: x-small;
 		text-align: right;
