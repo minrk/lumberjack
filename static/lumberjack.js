@@ -452,13 +452,13 @@ function datetimeify( mysql_date_string )
   var d = space_split[0];
   var t = space_split[1];
   var date_split = d.split("-");
-  dt.setFullYear( date_split[0] );
-  dt.setMonth( date_split[1]-1 );
-  dt.setDate( date_split[2] );
+  dt.setUTCFullYear( date_split[0] );
+  dt.setUTCMonth( date_split[1]-1 );
+  dt.setUTCDate( date_split[2] );
   var time_split = t.split(":");
-  dt.setHours( time_split[0] );
-  dt.setMinutes( time_split[1] );
-  dt.setSeconds( time_split[2] );
+  dt.setUTCHours( time_split[0] );
+  dt.setUTCMinutes( time_split[1] );
+  dt.setUTCSeconds( time_split[2] );
   return dt;
 }
 
