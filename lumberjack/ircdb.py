@@ -1,6 +1,7 @@
-import json
-import sqlite3
 import datetime
+import json
+import logging
+import sqlite3
 
 def dict_factory(cursor, row):
     d = {}
@@ -48,13 +49,33 @@ class IRCDatabase(object):
             """)
         self.commit()
 
-    def insert_line(self, channel, name, time, message, msgtype, hidden = "F"):
+    def insert_line(self, channel, name, time, message, msgtype, hidden = None):
 
         """
         Sample line: "sfucsss, danly, 12:33-09/11/2009, I love hats, normal, 0"
         """
         channel, name, message = [ cast_unicode(s) for s in (channel, name, message)]
         args = (channel, name, time, message, msgtype, hidden)
+        
+        if hidden is None:
+            if msgtype == 'join':
+                hidden = 'T'
+            elif msgtype in ('quit', 'part', 'nick'):
+                query = """SELECT id FROM lumberjack 
+                        ORDER BY time DESC, id DESC LIMIT 1
+                """
+                result = self.cursor.execute(query, (channel,)).fetchone()
+                if result:
+                    last_id = result[0]
+                else:
+                    last_id = 1
+                
+                r = dict(channel=channel, name=name, id=last_id, type=msgtype)
+                hidden = 'T' if self._silent_before(r) else 'F'
+            else:
+                hidden = 'F'
+        
+        logging.debug("inserting line: %s", args)
         
         query = """INSERT INTO lumberjack
                         (channel, name, time, message, type, hidden)
@@ -121,49 +142,67 @@ class IRCDatabase(object):
             }
             yield r
     
-    def get_user_before(self, channel, user, id):
+    @staticmethod
+    def _format_hidden(query_t, include_hidden):
+        """format query with hidden flag"""
+        hidden = "" if include_hidden else "AND hidden = 'F'"
+        return query_t.format(hidden=hidden)
+    
+    def get_user_before(self, channel, user, id, include_hidden=True):
         query = """SELECT * FROM lumberjack
                 WHERE channel = ? AND name = ? AND id < ?
+                {hidden}
                 ORDER BY time DESC, id DESC
         """
+        query = self._format_hidden(query, include_hidden)
         cursor = self.cursor.execute(query, (channel, user, id))
         return cursor
     
-    def get_user_after(self, channel, user, id):
+    def get_user_after(self, channel, user, id, include_hidden=True):
         query = """SELECT * FROM lumberjack
                 WHERE channel = ? AND name = ? AND id > ?
+                {hidden}
                 ORDER BY time ASC, id ASC
         """
+        query = self._format_hidden(query, include_hidden)
         cursor = self.cursor.execute(query, (channel, user, id))
         return cursor
     
-    def get_last(self, channel, n=100):
+    def get_last(self, channel, n=100, include_hidden=False):
         query = """SELECT * FROM lumberjack 
                 WHERE channel = ? 
+                {hidden}
                 ORDER BY time DESC, id DESC LIMIT ?
         """
+        query = self._format_hidden(query, include_hidden)
         cursor = self.cursor.execute(query, (channel, n))
         return reversed(list(cursor))
     
-    def get_before(self, channel, id, n=100):
+    def get_before(self, channel, id, n=100, include_hidden=False):
         query = """SELECT * FROM lumberjack
                 WHERE channel = ? AND id < ?
+                {hidden}
                 ORDER BY time DESC, id DESC LIMIT ?
         """
+        query = self._format_hidden(query, include_hidden)
         return self.cursor.execute(query, (channel, id, n))
     
-    def get_after(self, channel, id, n=100):
+    def get_after(self, channel, id, n=100, include_hidden=False):
         query = """SELECT * FROM lumberjack
                 WHERE channel = ? AND id > ?
+                {hidden}
                 ORDER BY time ASC, id ASC LIMIT ?
         """
+        query = self._format_hidden(query, include_hidden)
         return self.cursor.execute(query, (channel, id, n))
     
-    def get_since_id(self, channel, id, limit=500):
+    def get_since_id(self, channel, id, limit=500, include_hidden=False):
         query = """SELECT * FROM lumberjack
-                WHERE channel = ? AND id > ? 
+                WHERE channel = ? AND id > ?
+                {hidden}
                 ORDER BY time ASC, id DESC LIMIT ?
         """
+        query = self._format_hidden(query, include_hidden)
         return self.cursor.execute(query, (channel, id, limit))
     
     def get_offset(self, channel, id):
@@ -178,22 +217,25 @@ class IRCDatabase(object):
         else:
             return first[0]
     
-    def get_context(self, channel, id, n=100):
+    def get_context(self, channel, id, n=100, include_hidden=False):
         offset = self.get_offset(channel, id)
         offset = max(0, offset - n/2)
         
         query = """SELECT * FROM (SELECT * FROM lumberjack
                     WHERE channel = ?
+                    {hidden}
                     LIMIT ? OFFSET ?
                 ) channel_table
                 ORDER BY time DESC
         """
+        query = self._format_hidden(query, include_hidden)
         return self.cursor.execute(query, (channel, id, n))
     
     def search(self, channel, searches, limit=500, offset=0):
         query = """SELECT * FROM lumberjack
                 WHERE channel = ?
         """
+        query = self._format_hidden(query, include_hidden)
         args = [channel]
         if isinstance(searches, basestring):
             searches = [searches]
