@@ -3,6 +3,7 @@
 import os,sys
 
 import json
+import logging
 
 import tornado.httpserver
 import tornado.ioloop
@@ -54,6 +55,7 @@ def main():
     
     http_server = tornado.httpserver.HTTPServer(application)
     http_server.listen(options.port)
+    logging.info("listening on port %i", options.port)
     try:
         tornado.ioloop.IOLoop.instance().start()
     finally:
