@@ -33,10 +33,11 @@ class JSONHandler(tornado.web.RequestHandler):
                 method = db.get_after
             else:
                 method = db.get_context
-            for i in range(1,10):
-                result = list(db.filter_silence(method(channel, id, i * n)))
-                if len(result) >= n:
-                    break
+            result = method(channel, id, n)
+            # for i in range(1,10):
+            #     result = list(db.filter_silence(method(channel, id, i * n)))
+            #     if len(result) >= n:
+            #         break
         
         elif switch == 'tag':
             result = db.get_tag(channel, tag, limit=n)
@@ -50,7 +51,7 @@ class JSONHandler(tornado.web.RequestHandler):
             logging.error("unhandled request: %s" % switch)
             raise tornado.web.HTTPError(404)
         
-        if switch not in ('context', 'user', 'lastseen'):
-            result = db.filter_silence(result)
+        # if switch not in ('context', 'user', 'lastseen'):
+        #     result = db.filter_silence(result)
         self.write(json.dumps(list(result)))
     
