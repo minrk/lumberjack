@@ -108,9 +108,11 @@ class IRCLogger(irclib.SimpleIRCClient):
             # update names lists
             if etype == 'join':
                 channel = e.target()
+                logging.info("%s joined %s", source, channel)
                 self.names[channel].add(source)
-            elif etype in ('quit', 'part'):
+            elif etype == 'part':
                 channel = e.target()
+                logging.info("%s parted %s", source, channel)
                 self.names[channel].remove(source)
             
             # Prepare a message for the buffer
@@ -131,6 +133,15 @@ class IRCLogger(irclib.SimpleIRCClient):
                         nameset.remove(before)
                         nameset.add(after)
                         logging.info("%s renamed to %s in %s", before, after, channel)
+                        md = dict(message_dict)
+                        md['channel'] = channel
+                        self.message_cache.append( md )
+            elif etype == "quit":
+                name = source
+                logging.info("%s quit", name)
+                for channel, nameset in self.names.items():
+                    if name in nameset:
+                        nameset.remove(name)
                         md = dict(message_dict)
                         md['channel'] = channel
                         self.message_cache.append( md )
