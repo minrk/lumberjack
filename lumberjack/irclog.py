@@ -167,7 +167,8 @@ class IRCLogger(irclib.SimpleIRCClient):
         logging.warn("disconnect")
         self.on_ping(connection, event)
         if self._disconnect_timeout:
-            self._disconnect_timeout.cancel()
+            # cancel it
+            self._disconnect_timeout.callback = None
         self._disconnect_timeout = self.loop.add_timeout(time.time()+30, self._connect)
     
     def on_namreply(self, connection, event):
