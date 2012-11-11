@@ -55,18 +55,18 @@ class IRCDatabase(object):
         Sample line: "sfucsss, danly, 12:33-09/11/2009, I love hats, normal, 0"
         """
         channel, name, message = [ cast_unicode(s) for s in (channel, name, message)]
-        args = (channel, name, time, message, msgtype, hidden)
         
         if hidden is None:
             if msgtype == 'join':
                 hidden = 'T'
             elif msgtype in ('quit', 'part', 'nick'):
-                query = """SELECT id FROM lumberjack 
+                query = """SELECT id FROM lumberjack
+                        WHERE channel = ?
                         ORDER BY time DESC, id DESC LIMIT 1
                 """
                 result = self.cursor.execute(query, (channel,)).fetchone()
                 if result:
-                    last_id = result[0]
+                    last_id = result['id']
                 else:
                     last_id = 1
                 
@@ -75,6 +75,7 @@ class IRCDatabase(object):
             else:
                 hidden = 'F'
         
+        args = (channel, name, time, message, msgtype, hidden)
         logging.debug("inserting line: %s", args)
         
         query = """INSERT INTO lumberjack
