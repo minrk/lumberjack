@@ -28,7 +28,8 @@ class IRCLogger(irclib.SimpleIRCClient):
         if loop is None:
             loop = ioloop.IOLoop.instance()
         self.loop = loop
-        self._disconnect_timeout = None
+        self._last_connected = time.time()
+        self._reconnect_interval = 30
         
         #IRC details
         self.server = server
@@ -60,9 +61,14 @@ class IRCLogger(irclib.SimpleIRCClient):
         self.ping_callback = pc = ioloop.PeriodicCallback(self._no_ping, 60000, self.loop)
         pc.start()
         
-        self.connect_callback = cc = ioloop.PeriodicCallback(self._check_connect, 30000, self.loop)
-        cc.start()
+        # failure = ioloop.PeriodicCallback(self._FAKE_DISCONNECT, 25000, self.loop)
+        # failure.start()
         
+    def _FAKE_DISCONNECT(self):
+        """fake disconnect callback for debugging"""
+        logging.critical("DISCONNECTING MYSELF")
+        if self.connection.is_connected():
+            self.connection.disconnect()
     
     def _check_connect(self):
         """Connect to a new server, possibly disconnecting from the current.
@@ -70,15 +76,17 @@ class IRCLogger(irclib.SimpleIRCClient):
         The bot will skip to next server in the server_list each time
         jump_server is called.
         """
-        
+        raise RuntimeError("_check_connect should not be used!")
         logging.debug("checking connection")
-        if not self.connection.is_connected():
-            self._connect()
+        if self.connection.is_connected():
+            return
     
     def _connect(self):
         logging.info("IRC:connecting to %s:%i %s as %s...", self.server, self.port, self.channels, self.nick)
         irclib.SimpleIRCClient.connect(self, self.server, self.port, self.nick)
-        self.loop.add_handler(self.connection.socket.fileno(), self._handle_message, self.loop.READ)
+        self._connection_fd = self.connection.socket.fileno()
+        self.loop.add_handler(self._connection_fd, self._handle_message, self.loop.READ)
+        self._last_connect = time.time()
     
     def _handle_message(self, fd, events):
         logging.debug("dispatching message")
@@ -166,10 +174,26 @@ class IRCLogger(irclib.SimpleIRCClient):
     def on_disconnect(self, connection, event):
         logging.warn("disconnect")
         self.on_ping(connection, event)
-        if self._disconnect_timeout:
-            # cancel it
-            self._disconnect_timeout.callback = None
-        self._disconnect_timeout = self.loop.add_timeout(time.time()+30, self._connect)
+        self.loop.remove_handler(self._connection_fd)
+        logging.warn("connection lost, triggering reconnect")
+        
+        if (time.time() - self._last_connect) < 600:
+            # short-lived connection, throttle reconnect
+            interval = self._reconnect_interval
+            if interval > 600:
+                # tried slowing down to 10 minutes, still failed:
+                logging.critical("reconnecting doesn't seem to be working, giving up")
+                self.loop.stop()
+                return
+            else:
+                # exponentially throttle reconnects
+                self._reconnect_interval = interval * 2
+            logging.error("last reconnect seems to have failed, next try in %is", interval)
+        else:
+            # last connect seemed to go fine, start with 30s check interval
+            interval = self._reconnect_interval = interval * 2
+            logging.info("last connect was okay, back to %is check", interval)
+        self.loop.add_timeout(time.time() + interval, self._connect)
     
     def on_namreply(self, connection, event):
         owner = cast_unicode(event.arguments()[0])
@@ -218,17 +242,20 @@ class IRCLogger(irclib.SimpleIRCClient):
             text = cast_unicode(event.arguments()[0])
         except IndexError:
             text = u''
+        channel = cast_unicode(event.target() or '')
         
         logging.info("pubmsg: %s", text)
 
         # If you talk to the bot, this is how he responds.
         if self.nick_reg.search(text):
+            logging.debug("bloop")
             if text.split(" ")[1] and text.split(" ")[1] == "quit":
-                connection.privmsg(self.channel, "Goodbye.")
+                connection.privmsg(channel, "Goodbye.")
                 self.on_ping( connection, event )
                 sys.exit( 0 ) 
                 
             if text.split(" ")[1] and text.split(" ")[1] == "ping":
+                connection.privmsg(channel, "Pong.")
                 self.on_ping(connection, event)
                 return
     
