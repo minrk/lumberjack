@@ -504,7 +504,7 @@ function human_date( date )
   }
   
   var hours = date.getHours();
-  var minutes = date.getHours();
+  var minutes = date.getMinutes();
 
   if ( hours == 0 && minutes == 0 ) {
     ts = "Midnight";
